@@ -5,6 +5,7 @@ from typing import Dict, Callable, Tuple, Set
 
 from config import load_config
 from gumroad_verifier import verify_gumroad_sale
+from jinxxy_verifier import verify_jinxxy_sale
 
 config = load_config()
 
@@ -18,6 +19,7 @@ class MyBot(commands.Bot):
         super().__init__(command_prefix='/', intents=intents)
         self.verifiers: Dict[str, VerifierFunction] = {
             "gumroad": verify_gumroad_sale,
+            "jinxxy": verify_jinxxy_sale,
             # other platform verifiers here
         }
 
@@ -41,6 +43,7 @@ async def on_ready():
 )
 @app_commands.choices(platform=[
     app_commands.Choice(name="Gumroad", value="gumroad"),
+    app_commands.Choice(name="Jinxxy", value="jinxxy"),
     # other platforms here
 ])
 async def verifysale(interaction: discord.Interaction, platform: str, email: str):
