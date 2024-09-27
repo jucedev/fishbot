@@ -20,6 +20,7 @@ class MyBot(commands.Bot):
         self.verifiers: Dict[str, VerifierFunction] = {
             "gumroad": verify_gumroad_sale,
             "jinxxy": verify_jinxxy_sale,
+            # other platform verifiers here
         }
 
     async def setup_hook(self):
