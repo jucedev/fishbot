@@ -76,6 +76,7 @@ async def verifysale(interaction: discord.Interaction, platform: str, email: str
                 "Sorry, I couldn't verify your sale. Please check your email and try again.",
                 ephemeral=True,
             )
+            return
 
         roles_assigned = []
 
