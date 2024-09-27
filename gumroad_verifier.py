@@ -7,7 +7,7 @@ config = load_config()
 
 async def verify_gumroad_sale(email: str) -> Tuple[bool, Set[str]]:
     url = "https://api.gumroad.com/v2/sales"
-    headers = {"Authorization": f"Bearer {config["platforms"]["gumroad"]['api_key']}"}
+    headers = {"Authorization": f"Bearer {config["platforms"]["gumroad"]["api_key"]}"}
     params = {"email": email}
 
     async with aiohttp.ClientSession() as session:
