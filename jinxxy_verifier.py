@@ -11,9 +11,10 @@ async def verify_jinxxy_sale(email: str) -> Tuple[bool, List[str]]:
     params = {"search_query": email}
 
     purchased_products = []
+    discord_usernames = []
 
     async with aiohttp.ClientSession() as session:
-        # Get all orders for the user
+        # Step 1: Get all orders for the user
         async with session.get(url, headers=headers, params=params) as response:
             if response.status == 200:
                 data = await response.json()
@@ -21,7 +22,7 @@ async def verify_jinxxy_sale(email: str) -> Tuple[bool, List[str]]:
                 if not orders:
                     return False, []
 
-                # Fetch each order by its ID
+                # Step 2: Fetch each order by its ID
                 for order in orders:
                     order_id = order['id']
                     order_url = f"{url}/{order_id}"
@@ -34,10 +35,14 @@ async def verify_jinxxy_sale(email: str) -> Tuple[bool, List[str]]:
                             for item in order_data.get("order_items", []):
                                 if item.get("target_type") == "DIGITAL_PRODUCT":
                                     purchased_products.append(item["target_id"])
+                            for field in order_data.get("checkout_fields", []):
+                                if field.get("label") == "Discord username":
+                                    discord_usernames.append(field.get("answer", ""))          
+                            print(purchased_products, discord_usernames)                                                           
                         else:
                             print(f"Failed to retrieve order {order_id}: {order_response.status}")
 
-                return True, purchased_products
+                return True, purchased_products,discord_usernames
             elif response.status == 401:
                 print("Unauthorized: Check your API key")
                 return False, []

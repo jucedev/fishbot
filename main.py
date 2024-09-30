@@ -69,7 +69,7 @@ async def verifysale(interaction: discord.Interaction, platform: str, email: str
         await interaction.response.defer(ephemeral=True)
 
         verifier = bot.verifiers[platform]
-        verified, purchased_products = await verifier(email)
+        verified, purchased_products, discord_usernames = await verifier(email)
 
         if not verified:
             await interaction.followup.send(
@@ -88,7 +88,7 @@ async def verifysale(interaction: discord.Interaction, platform: str, email: str
             roles_assigned.append(verified_role.name)
 
         # Assign product-specific roles
-        for product_id in purchased_products:
+        for product_id,discord_username in zip(purchased_products,discord_usernames):
             role_id = config["platforms"][platform]['product_roles'].get(product_id)
             if not role_id:
                 continue
@@ -96,9 +96,11 @@ async def verifysale(interaction: discord.Interaction, platform: str, email: str
             role = discord.utils.get(interaction.guild.roles, id=int(role_id))
             if not role:
                 continue
-
-            await interaction.user.add_roles(role)
-            roles_assigned.append(role.name)
+            if interaction.user.name.lower() == discord_username.lower():   
+                await interaction.user.add_roles(role)
+                roles_assigned.append(role.name)
+            else:
+                await interaction.followup.send("Discord username does not match with given username at checkout for : "+ str(role) +". Contact an Admin.", ephemeral=True)
 
         if roles_assigned:
             await interaction.followup.send(f"Sale verified! You've been given the following roles: {', '.join(roles_assigned)}.", ephemeral=True)
@@ -109,5 +111,6 @@ async def verifysale(interaction: discord.Interaction, platform: str, email: str
             "Sorry, I couldn't verify your sale. Please contact an admin.",
             ephemeral=True,
         )
+        
 
 bot.run(config['discord_token'])
