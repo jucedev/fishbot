@@ -33,26 +33,22 @@ bot = MyBot()
 async def on_ready():
     print(f'{bot.user} has connected successfully.')
 
+# Button view for selecting a platform
+class PlatformSelectView(discord.ui.View):
+    def __init__(self, email: str):
+        super().__init__()
+        self.email = email
 
-@bot.tree.command(
-    name="verifysale",
-    description="Verify a purchase and assign roles",
-)
-@app_commands.describe(
-    platform="The platform you purchased from",
-    email="The email address used for the purchase",
-)
-@app_commands.choices(
-    platform=[
-        app_commands.Choice(name="Gumroad", value="gumroad"),
-        app_commands.Choice(name="Jinxxy", value="jinxxy"),
-        # other platforms here
-    ]
-)
+    @discord.ui.button(label="Gumroad", style=discord.ButtonStyle.primary)
+    async def gumroad_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.verify_sale(interaction, "gumroad")
 
-async def verifysale(interaction: discord.Interaction, platform: str, email: str):
-    try:
-        platform = platform.lower()
+    @discord.ui.button(label="Jinxxy", style=discord.ButtonStyle.primary)
+    async def jinxxy_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.verify_sale(interaction, "jinxxy")
+
+    async def verify_sale(self, interaction: discord.Interaction, platform: str):
+        email = self.email
 
         if platform not in bot.verifiers:
             await interaction.response.send_message(
@@ -60,57 +56,75 @@ async def verifysale(interaction: discord.Interaction, platform: str, email: str
             )
             return
 
-        if not email:
-            await interaction.response.send_message(
-                "Please provide an email address.", ephemeral=True
-            )
-            return
-
         await interaction.response.defer(ephemeral=True)
 
         verifier = bot.verifiers[platform]
-        verified, purchased_products, discord_usernames = await verifier(email)
+        try:
+            verified, purchased_products, discord_usernames = await verifier(email)
 
-        if not verified:
+            if not verified:
+                await interaction.followup.send(
+                    "Sorry, I couldn't verify your purchase. Please check your email and try again.",
+                    ephemeral=True,
+                )
+                return
+
+            roles_assigned = []
+
+            # Assign Supporter Role
+            verified_role_id = int(config["verified_role_id"])
+            verified_role = discord.utils.get(interaction.guild.roles, id=verified_role_id)
+            if verified_role:
+                await interaction.user.add_roles(verified_role)
+                roles_assigned.append(verified_role.name)
+
+            # Assign avatar-specific roles
+            for product_id, discord_username in zip(purchased_products, discord_usernames):
+                role_id = config["platforms"][platform]['product_roles'].get(product_id)
+                if not role_id:
+                    continue
+
+                role = discord.utils.get(interaction.guild.roles, id=int(role_id))
+                if not role:
+                    continue
+                if interaction.user.name.lower() == discord_username.lower():
+                    await interaction.user.add_roles(role)
+                    roles_assigned.append(role.name)
+                else:
+                    await interaction.followup.send(f"Discord username does not match the checkout username for: {role}. Contact an Admin.", ephemeral=True)
+
+            if roles_assigned:
+                await interaction.followup.send(f"Purchase verified! You've been assigned the following roles: {', '.join(roles_assigned)}.", ephemeral=True)
+            else:
+                await interaction.followup.send("Purchase verified! However, no roles were assigned. Please contact an admin.", ephemeral=True)
+        
+        except Exception as e:
             await interaction.followup.send(
-                "Sorry, I couldn't verify your sale. Please check your email and try again.",
+                "Sorry, I couldn't verify your purchase. Please contact an admin.",
                 ephemeral=True,
             )
-            return
 
-        roles_assigned = []
+# Modal form for the email input
+class EmailInputModal(discord.ui.Modal, title="Verify Your Purchase"):
+    email = discord.ui.TextInput(
+        label="Email",
+        placeholder="Enter the email used for the purchase",
+        required=True
+    )
 
-        # Assign overall verified role
-        verified_role_id = int(config["verified_role_id"])
-        verified_role = discord.utils.get(interaction.guild.roles, id=verified_role_id)
-        if verified_role:
-            await interaction.user.add_roles(verified_role)
-            roles_assigned.append(verified_role.name)
-
-        # Assign product-specific roles
-        for product_id,discord_username in zip(purchased_products,discord_usernames):
-            role_id = config["platforms"][platform]['product_roles'].get(product_id)
-            if not role_id:
-                continue
-
-            role = discord.utils.get(interaction.guild.roles, id=int(role_id))
-            if not role:
-                continue
-            if interaction.user.name.lower() == discord_username.lower():   
-                await interaction.user.add_roles(role)
-                roles_assigned.append(role.name)
-            else:
-                await interaction.followup.send("Discord username does not match with given username at checkout for : "+ str(role) +". Contact an Admin.", ephemeral=True)
-
-        if roles_assigned:
-            await interaction.followup.send(f"Sale verified! You've been given the following roles: {', '.join(roles_assigned)}.", ephemeral=True)
-        else:
-            await interaction.followup.send("Sale verified! However, I couldn't assign any roles. Please contact an admin.", ephemeral=True)
-    except Exception as e:
-        await interaction.followup.send(
-            "Sorry, I couldn't verify your sale. Please contact an admin.",
-            ephemeral=True,
+    async def on_submit(self, interaction: discord.Interaction):
+        # After getting the email, present the platform buttons
+        await interaction.response.send_message(
+            "Select the platform where you made your purchase:",
+            view=PlatformSelectView(self.email.value),
+            ephemeral=True
         )
-        
+
+@bot.tree.command(
+    name="verifypurchase",
+    description="Open a form to verify your purchase"
+)
+async def verifysale(interaction: discord.Interaction):
+    await interaction.response.send_modal(EmailInputModal())
 
 bot.run(config['discord_token'])
