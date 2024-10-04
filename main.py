@@ -33,21 +33,18 @@ class MyBot(commands.Bot):
         
         # Check if the message was sent already
         if not os.path.exists('message_sent.txt'):
-            try:
-                # Send the embedded message with buttons when the bot starts (only if not sent before)
-                CHANNEL_ID = int(config["channel_id"])
-                channel = self.get_channel(CHANNEL_ID) # Replace with channel ID where the bot will be in
-                if channel:
-                    embed = discord.Embed(
-                        title="Verify Your Purchase",
-                        description="Please select the platform you purchased from."
-                    )
-                    await channel.send(embed=embed, view=PlatformSelectView())
-                # Write to the file to indicate the message has been sent
-                with open('message_sent.txt', 'w') as f:
-                    f.write('Message has been sent.')
-            except Exception as e:
-                print("Please set correct channel ID")
+            # Send the embedded message with buttons when the bot starts (only if not sent before)
+            CHANNEL_ID = int(config["channel_id"])
+            channel = self.get_channel(CHANNEL_ID) # Replace with channel ID where the bot will be in
+            if channel:
+                embed = discord.Embed(
+                    title="Verify Your Purchase",
+                    description="Please select the platform you purchased from."
+                )
+                await channel.send(embed=embed, view=PlatformSelectView())
+            # Write to the file to indicate the message has been sent
+            with open('message_sent.txt', 'w') as f:
+                f.write('Message has been sent.')
 
 # Persistent View with buttons for platform selection
 class PlatformSelectView(discord.ui.View):
