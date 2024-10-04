@@ -19,7 +19,7 @@ async def verify_gumroad_sale(email: str) -> Tuple[bool, Set[str]]:
                     discord_usernames = set(sale.get('custom_fields', {}).get('Discord', None) for sale in sales)
                     print(purchased_products, discord_usernames)
                     return True, purchased_products, discord_usernames
-                return False, set()
+                return False, set(), set()
             else:
                 print(f"Error: {response.status}")
-                return False, set()
+                return False, set(), set()

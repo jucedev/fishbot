@@ -20,7 +20,7 @@ async def verify_jinxxy_sale(email: str) -> Tuple[bool, List[str]]:
                 data = await response.json()
                 orders = data.get("results", [])
                 if not orders:
-                    return False, []
+                    return False, set(), set()
 
                 # Step 2: Fetch each order by its ID
                 for order in orders:
@@ -45,7 +45,7 @@ async def verify_jinxxy_sale(email: str) -> Tuple[bool, List[str]]:
                 return True, purchased_products,discord_usernames
             elif response.status == 401:
                 print("Unauthorized: Check your API key")
-                return False, []
+                return False, set(), set()
             else:
                 print(f"Failed to retrieve orders: {response.status}")
-                return False, []
+                return False, set(), set()

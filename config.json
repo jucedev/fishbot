@@ -1,6 +1,7 @@
 {
     "discord_token": "YOUR_DISCORD_BOT_TOKEN",
     "verified_role_id": "YOUR_OVERALL_VERIFIED_ROLE_ID",
+    "channel_id": "YOUR_SERVER_CHANNEL_ID",
     "platforms": {
         "gumroad": {
             "api_key": "GUMROAD_API_KEY",

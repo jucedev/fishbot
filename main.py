@@ -35,7 +35,8 @@ class MyBot(commands.Bot):
         if not os.path.exists('message_sent.txt'):
             try:
                 # Send the embedded message with buttons when the bot starts (only if not sent before)
-                channel = self.get_channel(CHANNEL_ID)  # Replace with channel ID where the bot will be in
+                CHANNEL_ID = int(config["channel_id"])
+                channel = self.get_channel(CHANNEL_ID) # Replace with channel ID where the bot will be in
                 if channel:
                     embed = discord.Embed(
                         title="Verify Your Purchase",
@@ -92,7 +93,7 @@ async def verify_purchase(interaction: discord.Interaction, platform: str, email
     
     try:
         verified, purchased_products, discord_usernames = await verifier(email)
-
+        print(verified, purchased_products, discord_usernames)
         if not verified:
             await interaction.followup.send(
                 "Sorry, I couldn't verify your purchase. Please check your email and try again.",
@@ -101,17 +102,11 @@ async def verify_purchase(interaction: discord.Interaction, platform: str, email
             return
 
         roles_assigned = []
-        verified_role_id = int(config["verified_role_id"])  # The role ID for verified users
-        verified_role = discord.utils.get(interaction.guild.roles, id=verified_role_id)
-
-        # Assign the "verified" role
-        if verified_role:
-            await interaction.user.add_roles(verified_role)
-            roles_assigned.append(verified_role.name)
+        roles_not_assigned = []
 
         # Assign product-specific roles
         for product_id, discord_username in itertools.zip_longest(purchased_products, discord_usernames):
-            
+
             role_id = config["platforms"][platform]['product_roles'].get(product_id)
             
             if not role_id:
@@ -126,25 +121,40 @@ async def verify_purchase(interaction: discord.Interaction, platform: str, email
                 await interaction.user.add_roles(role)
                 roles_assigned.append(role.name)
             else:
-                await interaction.followup.send(
-                    f"Discord username does not match with checkout username for: {role}. Contact an Admin.", 
-                    ephemeral=True
-                )
+                roles_not_assigned.append(role.name)
 
         if roles_assigned:
+            verified_role_id = int(config["verified_role_id"])  # The role ID for verified users
+            verified_role = discord.utils.get(interaction.guild.roles, id=verified_role_id)
+            # Assign the "verified" role
+            if verified_role:   
+                await interaction.user.add_roles(verified_role)
+                roles_assigned.append(verified_role.name)
+            else:
+                # Please check config.json and make sure verified_role_id is set correctly
+                await interaction.followup.send(
+                f"There was an error assigning Supporter Role. Please open a ticket",
+                ephemeral=True
+                )
             await interaction.followup.send(
                 f"Your {platform} purchase has been verified! You've been given the following roles: {', '.join(roles_assigned)}.",
                 ephemeral=True
             )
-        else:
+        elif roles_not_assigned:
             await interaction.followup.send(
-                f"Your {platform} purchase has been verified, but no roles were assigned. Please contact an admin.",
+                f"Discord username does not match with username given at checkout for: {', '.join(roles_not_assigned)}. Please open a ticket.", 
+                ephemeral=True
+            )
+        else:
+            # Possible wrong configuration. Check roles IDs in config.json
+            await interaction.followup.send(
+                f"Your {platform} purchase has been verified, but no roles were assigned. Please open a ticket.",
                 ephemeral=True
             )
 
     except Exception as e:
         await interaction.followup.send(
-            "Sorry, there was an error during verification. Please contact an admin.",
+            "Sorry, there was an error during verification. Please open a ticket.",
             ephemeral=True,
         )
 
